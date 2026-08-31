@@ -66,8 +66,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       payload.text,
     );
 
-    // Broadcast to everyone in the cluster room
-    this.server.to(`cluster:${payload.clusterId}`).emit('new_message', savedMsg);
+    // Broadcast to everyone in the cluster room if socket server is active
+    if (this.server) {
+      this.server.to(`cluster:${payload.clusterId}`).emit('new_message', savedMsg);
+    }
     return savedMsg;
   }
 }

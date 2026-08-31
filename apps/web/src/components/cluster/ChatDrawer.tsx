@@ -54,16 +54,22 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ clusterId, clusterName, 
     const currentText = text.trim();
     setText('');
 
-    // Emit over socket or POST endpoint
+    // Emit over socket or fallback to REST POST endpoint
     try {
       const socket = getSocket();
-      socket.emit('send_message', {
-        clusterId,
-        senderId: user.id,
-        text: currentText,
-      });
+      if (socket && socket.connected) {
+        socket.emit('send_message', {
+          clusterId,
+          senderId: user.id,
+          text: currentText,
+        });
+      } else {
+        const res = await api.post(`/clusters/${clusterId}/chat/messages`, { text: currentText });
+        setMessages((prev) => [...prev, res.data]);
+      }
     } catch (e) {
-      await api.post(`/clusters/${clusterId}/chat/messages`, { text: currentText });
+      const res = await api.post(`/clusters/${clusterId}/chat/messages`, { text: currentText });
+      setMessages((prev) => [...prev, res.data]);
     }
   };
 

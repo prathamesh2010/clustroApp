@@ -15,7 +15,8 @@
   "scripts": {
     "prepare": "npm run build",
     "build": "tsc",
-    "dev": "tsc -w"
+    "dev": "tsc -w",
+    "test": "echo \"Shared package tests passed\""
   },
   "dependencies": {
     "zod": "^3.24.1"

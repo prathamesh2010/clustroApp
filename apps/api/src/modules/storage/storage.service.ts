@@ -15,11 +15,17 @@ export interface UploadResult {
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
-  private readonly uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || './uploads');
+  private readonly uploadDir = path.resolve(
+    process.env.VERCEL ? '/tmp/uploads' : process.env.UPLOAD_DIR || './uploads',
+  );
 
   constructor() {
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
+    try {
+      if (!fs.existsSync(this.uploadDir)) {
+        fs.mkdirSync(this.uploadDir, { recursive: true });
+      }
+    } catch (err: any) {
+      this.logger.warn(`Could not create upload directory ${this.uploadDir}: ${err.message}`);
     }
   }
 
