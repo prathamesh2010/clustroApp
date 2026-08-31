@@ -15,7 +15,7 @@ export async function bootstrapServer(): Promise<Express> {
     logger: ['error', 'warn', 'log'],
   });
 
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v1', { exclude: ['/', 'health'] });
   app.use(cookieParser());
 
   app.enableCors({

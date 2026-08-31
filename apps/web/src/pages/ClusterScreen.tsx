@@ -8,7 +8,7 @@ import {
   ClusterStatus,
   fmtMoney,
 } from '@clustro/shared';
-import { api } from '../services/api';
+import { api, API_BASE } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getTypeMeta } from '../components/common/TypeIcon';
 import { RoleBadge } from '../components/common/RoleBadge';
@@ -158,7 +158,7 @@ export const ClusterScreen: React.FC<ClusterScreenProps> = ({ clusterId, onBack 
   };
 
   const handleDownloadCsv = () => {
-    window.open(`/api/v1/clusters/${clusterId}/export/csv`, '_blank');
+    window.open(`${API_BASE}/clusters/${clusterId}/export/csv`, '_blank');
   };
 
   const handleCopyInviteCode = () => {

@@ -12,6 +12,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ExportsModule } from './modules/exports/exports.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -29,5 +30,6 @@ import { StorageModule } from './modules/storage/storage.module';
     ExportsModule,
     StorageModule,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}
