@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: clustro-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: clustro_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - clustro_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: clustro-api
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/clustro_db"
+      JWT_SECRET: "clustro_jwt_secret_production_key_random_2026_xyz"
+      JWT_REFRESH_SECRET: "clustro_jwt_refresh_secret_production_key_random_2026_xyz"
+      PORT: 3001
+      NODE_ENV: "production"
+      CORS_ORIGIN: "http://localhost:5173,http://localhost:3000"
+    ports:
+      - "3001:3001"
+    volumes:
+      - clustro_uploads:/app/apps/api/uploads
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: clustro-web
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+volumes:
+  clustro_pgdata:
+  clustro_uploads:

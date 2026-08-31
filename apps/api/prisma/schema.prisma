@@ -1,0 +1,439 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ClusterType {
+  family
+  friends
+  trip
+  picnic
+  party
+  society
+  village
+  office
+  sports
+  club
+  custom
+}
+
+enum ClusterStatus {
+  pending
+  live
+  settlement
+  ended
+}
+
+enum ClusterRole {
+  owner
+  head
+  member
+  inherited
+  beneficiary
+  representative
+}
+
+enum SplitType {
+  EQUAL
+  CUSTOM
+  PERCENTAGE
+  SHARES
+}
+
+enum PaymentStatus {
+  initiated
+  pending
+  successful
+  failed
+  cancelled
+  refunded
+}
+
+enum PaymentMethod {
+  UPI
+  CASH
+  BANK_TRANSFER
+  CARD
+  OTHER
+}
+
+enum ActivityCategory {
+  TRAVEL
+  STAY
+  FOOD
+  SHOPPING
+  EVENT
+  ENTERTAINMENT
+  FITNESS
+  FAMILY
+  WORK
+  MAINTENANCE
+  OTHER
+}
+
+enum ActionType {
+  CLUSTER_CREATED
+  MEMBER_ADDED
+  MEMBER_REMOVED
+  MEMBER_ROLE_UPDATED
+  EXPENSE_CREATED
+  EXPENSE_UPDATED
+  EXPENSE_DELETED
+  SETTLEMENT_RECORDED
+  STATUS_CHANGED
+  DATES_UPDATED
+  EXPORT_GENERATED
+}
+
+enum NotificationType {
+  EXPENSE_ADDED
+  SETTLEMENT_REQUEST
+  PAYMENT_RECEIVED
+  INVITATION
+  MEMBER_JOINED
+  CLUSTER_STATUS
+  CHAT_MESSAGE
+  REMINDER
+}
+
+enum SubscriptionTier {
+  FREE
+  PLUS
+  PRO
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+model User {
+  id               String           @id @default(uuid()) @db.Uuid
+  email            String           @unique @db.VarChar(255)
+  phone            String?          @unique @db.VarChar(32)
+  name             String           @db.VarChar(100)
+  username         String           @unique @db.VarChar(50)
+  passwordHash     String           @map("password_hash") @db.VarChar(255)
+  avatarUrl        String?          @map("avatar_url")
+  defaultCurrency  String           @default("INR") @map("default_currency") @db.VarChar(3)
+  subscriptionTier SubscriptionTier @default(FREE) @map("subscription_tier")
+  isActive         Boolean          @default(true) @map("is_active")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  refreshTokens        RefreshToken[]
+  ownedClusters        Cluster[]             @relation("ClusterOwner")
+  memberships          ClusterMember[]
+  createdExpenses      Expense[]             @relation("ExpenseCreator")
+  recordedPayments     SettlementPayment[]   @relation("PaymentRecorder")
+  chatMessages         ChatMessage[]
+  notifications        Notification[]
+  activityLogs         ActivityLog[]         @relation("ActorActivity")
+  activities           Activity[]
+  sentConnections      Connection[]          @relation("SentConnections")
+  receivedConnections  Connection[]          @relation("ReceivedConnections")
+  sentDirectMessages   DirectMessage[]       @relation("SentDirectMessages")
+  receivedDirectMessages DirectMessage[]     @relation("ReceivedDirectMessages")
+  recurringExpenses    RecurringExpense[]    @relation("RecurringExpenseCreator")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @map("token_hash") @db.VarChar(255)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz()
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz()
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Cluster {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @db.VarChar(120)
+  description String?       @db.VarChar(500)
+  type        ClusterType   @default(family)
+  status      ClusterStatus @default(live)
+  currency    String        @default("INR") @db.VarChar(3)
+  location    String?       @db.VarChar(120)
+  startDate   DateTime?     @map("start_date") @db.Date
+  endDate     DateTime?     @map("end_date") @db.Date
+  ownerId     String        @map("owner_id") @db.Uuid
+  inviteCode  String?       @unique @map("invite_code") @db.VarChar(32)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt   DateTime?     @map("deleted_at") @db.Timestamptz()
+
+  owner              User                @relation("ClusterOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members            ClusterMember[]
+  expenses           Expense[]
+  settlementPayments SettlementPayment[]
+  chatMessages       ChatMessage[]
+  activityLogs       ActivityLog[]
+  activities         Activity[]
+  recurringExpenses  RecurringExpense[]
+  notifications      Notification[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@map("clusters")
+}
+
+model ClusterMember {
+  id             String      @id @default(uuid()) @db.Uuid
+  clusterId      String      @map("cluster_id") @db.Uuid
+  userId         String?     @map("user_id") @db.Uuid
+  displayName    String      @map("display_name") @db.VarChar(100)
+  email          String?     @db.VarChar(255)
+  phone          String?     @db.VarChar(32)
+  role           ClusterRole @default(member)
+  parentMemberId String?     @map("parent_member_id") @db.Uuid
+  isPlaceholder  Boolean     @default(false) @map("is_placeholder")
+  avatarUrl      String?     @map("avatar_url")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  cluster      Cluster         @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  parentMember ClusterMember?  @relation("ParentChildMember", fields: [parentMemberId], references: [id], onDelete: SetNull)
+  childMembers ClusterMember[] @relation("ParentChildMember")
+
+  paidExpenses     Expense[]           @relation("ExpensePayer")
+  expenseSplits    ExpenseSplit[]
+  paymentsSent     SettlementPayment[] @relation("PaymentSender")
+  paymentsReceived SettlementPayment[] @relation("PaymentReceiver")
+
+  @@unique([clusterId, userId])
+  @@index([clusterId])
+  @@index([userId])
+  @@index([parentMemberId])
+  @@map("cluster_members")
+}
+
+model Expense {
+  id              String           @id @default(uuid()) @db.Uuid
+  clusterId       String           @map("cluster_id") @db.Uuid
+  paidByMemberId  String           @map("paid_by_member_id") @db.Uuid
+  amount          Decimal          @db.Decimal(14, 2)
+  currency        String           @default("INR") @db.VarChar(3)
+  description     String           @db.VarChar(255)
+  category        ActivityCategory @default(FOOD)
+  expenseDate     DateTime         @default(now()) @map("expense_date") @db.Date
+  splitType       SplitType        @default(EQUAL) @map("split_type")
+  activityId      String?          @map("activity_id") @db.Uuid
+  location        String?          @db.VarChar(150)
+  notes           String?          @db.Text
+  createdByUserId String           @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt       DateTime?        @map("deleted_at") @db.Timestamptz()
+
+  cluster       Cluster             @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  paidByMember  ClusterMember       @relation("ExpensePayer", fields: [paidByMemberId], references: [id], onDelete: Restrict)
+  createdByUser User                @relation("ExpenseCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  activity      Activity?           @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  splits        ExpenseSplit[]
+  attachments   ExpenseAttachment[]
+
+  @@index([clusterId])
+  @@index([paidByMemberId])
+  @@index([expenseDate])
+  @@index([activityId])
+  @@map("expenses")
+}
+
+model ExpenseSplit {
+  id                 String   @id @default(uuid()) @db.Uuid
+  expenseId          String   @map("expense_id") @db.Uuid
+  memberId           String   @map("member_id") @db.Uuid
+  allocatedAmount    Decimal  @map("allocated_amount") @db.Decimal(14, 2)
+  percentageOrWeight Decimal? @map("percentage_or_weight") @db.Decimal(6, 3)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  expense Expense       @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  member  ClusterMember @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@unique([expenseId, memberId])
+  @@index([expenseId])
+  @@index([memberId])
+  @@map("expense_splits")
+}
+
+model ExpenseAttachment {
+  id            String   @id @default(uuid()) @db.Uuid
+  expenseId     String   @map("expense_id") @db.Uuid
+  storageKey    String   @map("storage_key") @db.Text
+  fileUrl       String   @map("file_url") @db.Text
+  fileName      String   @map("file_name") @db.VarChar(255)
+  fileType      String   @map("file_type") @db.VarChar(64)
+  fileSizeBytes Int      @map("file_size_bytes")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@index([expenseId])
+  @@map("expense_attachments")
+}
+
+model SettlementPayment {
+  id                String        @id @default(uuid()) @db.Uuid
+  clusterId         String        @map("cluster_id") @db.Uuid
+  fromMemberId      String        @map("from_member_id") @db.Uuid
+  toMemberId        String        @map("to_member_id") @db.Uuid
+  amount            Decimal       @db.Decimal(14, 2)
+  currency          String        @default("INR") @db.VarChar(3)
+  status            PaymentStatus @default(successful)
+  paymentMethod     PaymentMethod @default(UPI) @map("payment_method")
+  providerReference String?       @map("provider_reference") @db.VarChar(100)
+  note              String?       @db.Text
+  paidAt            DateTime?     @map("paid_at") @db.Timestamptz()
+  recordedByUserId  String        @map("recorded_by_user_id") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+
+  cluster        Cluster       @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  fromMember     ClusterMember @relation("PaymentSender", fields: [fromMemberId], references: [id], onDelete: Restrict)
+  toMember       ClusterMember @relation("PaymentReceiver", fields: [toMemberId], references: [id], onDelete: Restrict)
+  recordedByUser User          @relation("PaymentRecorder", fields: [recordedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([clusterId])
+  @@index([fromMemberId])
+  @@index([toMemberId])
+  @@map("settlement_payments")
+}
+
+model Activity {
+  id          String           @id @default(uuid()) @db.Uuid
+  clusterId   String?          @map("cluster_id") @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  title       String           @db.VarChar(150)
+  description String?          @db.VarChar(500)
+  category    ActivityCategory @default(EVENT)
+  date        DateTime         @db.Date
+  dayNumber   Int?             @map("day_number")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  cluster  Cluster?  @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+
+  @@index([clusterId])
+  @@index([userId])
+  @@map("activities")
+}
+
+model ActivityLog {
+  id          String     @id @default(uuid()) @db.Uuid
+  clusterId   String     @map("cluster_id") @db.Uuid
+  actorId     String?    @map("actor_id") @db.Uuid
+  actionType  ActionType @map("action_type")
+  summaryText String     @map("summary_text") @db.Text
+  metadata    Json       @default("{}")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz()
+
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  actor   User?   @relation("ActorActivity", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([clusterId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model ChatMessage {
+  id          String   @id @default(uuid()) @db.Uuid
+  clusterId   String   @map("cluster_id") @db.Uuid
+  senderId    String   @map("sender_id") @db.Uuid
+  messageText String   @map("message_text") @db.Text
+  attachments Json     @default("[]")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  cluster Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  sender  User    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([clusterId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  clusterId String?          @map("cluster_id") @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(150)
+  message   String           @db.Text
+  isRead    Boolean          @default(false) @map("is_read")
+  linkUrl   String?          @map("link_url")
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cluster Cluster? @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+model Connection {
+  id          String           @id @default(uuid()) @db.Uuid
+  requesterId String           @map("requester_id") @db.Uuid
+  receiverId  String           @map("receiver_id") @db.Uuid
+  status      ConnectionStatus @default(PENDING)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  requester User @relation("SentConnections", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver  User @relation("ReceivedConnections", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, receiverId])
+  @@index([requesterId])
+  @@index([receiverId])
+  @@map("connections")
+}
+
+model DirectMessage {
+  id          String   @id @default(uuid()) @db.Uuid
+  senderId    String   @map("sender_id") @db.Uuid
+  receiverId  String   @map("receiver_id") @db.Uuid
+  messageText String   @map("message_text") @db.Text
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  sender   User @relation("SentDirectMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedDirectMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+  @@map("direct_messages")
+}
+
+model RecurringExpense {
+  id              String   @id @default(uuid()) @db.Uuid
+  clusterId       String   @map("cluster_id") @db.Uuid
+  title           String   @db.VarChar(150)
+  amount          Decimal  @db.Decimal(14, 2)
+  currency        String   @default("INR") @db.VarChar(3)
+  intervalDays    Int      @default(30) @map("interval_days")
+  nextDueDate     DateTime @map("next_due_date") @db.Date
+  active          Boolean  @default(true)
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  cluster       Cluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  createdByUser User    @relation("RecurringExpenseCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([clusterId])
+  @@map("recurring_expenses")
+}
