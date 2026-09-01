@@ -3,7 +3,7 @@ services:
     name: clustro-api
     runtime: node
     plan: free
-    buildCommand: npm install --include=dev && npm run build:api && prisma db push --schema=apps/api/prisma/schema.prisma --accept-data-loss
+    buildCommand: npm install --include=dev && npm run build:api && npx prisma db push --schema=apps/api/prisma/schema.prisma --accept-data-loss
     startCommand: npm run start:api
     healthCheckPath: /health
     envVars:
