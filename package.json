@@ -14,6 +14,7 @@
     "build:shared": "npm run build --workspace=@clustro/shared",
     "build:api": "npm run build --workspace=@clustro/shared && npm run build --workspace=@clustro/api",
     "build:web": "npm run build --workspace=@clustro/shared && npm run build --workspace=@clustro/web",
+    "start:api": "node apps/api/dist/main.js",
     "test": "npm run test --workspaces",
     "test:api": "npm run test --workspace=apps/api",
     "test:settlement": "npm run test:settlement --workspace=apps/api",

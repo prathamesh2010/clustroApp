@@ -49,8 +49,8 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3001;
-  await app.listen(port);
-  logger.log(`Clustro API server running on: http://localhost:${port}/api/v1`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`Clustro API server running on: http://0.0.0.0:${port}/api/v1`);
   logger.log(`Swagger OpenAPI documentation available at: http://localhost:${port}/api/docs`);
 }
 
