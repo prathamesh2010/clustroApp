@@ -3,7 +3,7 @@ services:
     name: clustro-api
     runtime: node
     plan: free
-    buildCommand: npm install --include=dev && npm run build:api
+    buildCommand: npm install --include=dev && npm run build:api && npm run prisma:migrate:deploy
     startCommand: npm run start:api
     healthCheckPath: /health
     envVars:

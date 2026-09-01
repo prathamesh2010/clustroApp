@@ -21,6 +21,7 @@
     "test:e2e": "npm run test:e2e --workspace=apps/web",
     "prisma:generate": "npm run prisma:generate --workspace=apps/api",
     "prisma:migrate": "npm run prisma:migrate --workspace=apps/api",
+    "prisma:migrate:deploy": "prisma migrate deploy --schema=apps/api/prisma/schema.prisma",
     "prisma:seed": "npm run prisma:seed --workspace=apps/api",
     "prisma:studio": "npm run prisma:studio --workspace=apps/api"
   },
